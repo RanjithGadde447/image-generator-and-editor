@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Image Generator & Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="index.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^0.7.0"
+        }
+      }
+    </script>
+    <script type="module" src="index.tsx"></script>
+  </head>
+  <body>
+    <main class="app-container">
+      <header>
+        <h1>Image Generator & Editor</h1>
+        <p>
+          Generate new images from text or edit existing ones by composing
+          scenes on the canvas.
+        </p>
+      </header>
+
+      <section class="config-section">
+        <div class="section-header">
+          <h2>Configuration</h2>
+        </div>
+        <div class="input-container">
+          <div class="form-group">
+            <label for="modelSelect">Select Model</label>
+            <select id="modelSelect">
+              <option value="imagen-4.0-generate-001" selected>
+                Image Generation (Imagen 4)
+              </option>
+              <option value="gemini-2.5-flash-image">
+                Image Editing & Generation (Gemini 2.5 Flash)
+              </option>
+            </select>
+          </div>
+
+          <!-- Inputs for Image Generation & Editing -->
+          <div id="image-inputs" class="model-inputs">
+            <div id="generation-options-container" class="form-group">
+              <label for="aspectRatioSelect">Aspect Ratio & Resolution</label>
+              <select id="aspectRatioSelect">
+                <option value="1:1" selected>1:1 (Square - 1024x1024)</option>
+                <option value="16:9">16:9 (Widescreen - 1344x738)</option>
+                <option value="9:16">9:16 (Portrait - 738x1344)</option>
+                <option value="4:3">4:3 (Landscape - 1024x768)</option>
+                <option value="3:4">3:4 (Portrait - 768x1024)</option>
+              </select>
+            </div>
+
+            <div id="image-edit-upload" class="form-group">
+              <label for="imageFile">Canvas Images for Composition</label>
+              <div class="file-input-wrapper">
+                <input type="file" id="imageFile" accept="image/*" multiple />
+                <button
+                  type="button"
+                  class="drive-button"
+                  data-target-input="imageFile"
+                  aria-label="Select from Google Drive"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M19.023 5.416l-3.56-3.56A1.5 1.5 0 0 0 14.404 1H9.587a1.5 1.5 0 0 0-1.06.44L4.966 4.999a1.493 1.493 0 0 0-.443.993L4.5 17.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V6.477a1.5 1.5 0 0 0-.477-1.061zM8.52 3.014L10.59 5h-3.1L8.52 3.014zM18 17.5a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5v-11c0-.001 0-.001 0-.002L5.522 6H11v2.5a.5.5 0 0 0 .5.5h4.5v8z"
+                    ></path>
+                    <path
+                      d="M22.5 11h-4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"
+                    ></path>
+                  </svg>
+                  <span>From Drive</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="label-group">
+                <label for="globalPrompt">Global Prompt</label>
+                <button
+                  id="surpriseMeButton"
+                  class="tertiary-button"
+                  aria-label="Generate a random prompt"
+                >
+                  ✨ Surprise Me
+                </button>
+              </div>
+              <div class="textarea-wrapper">
+                <textarea
+                  id="globalPrompt"
+                  rows="3"
+                  placeholder="A photorealistic image of... or Change the background to a beach..."
+                ></textarea>
+                <button
+                  type="button"
+                  class="clear-button hidden"
+                  aria-label="Clear global prompt"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            <details class="reference-image-section">
+              <summary>Face Details (Optional)</summary>
+              <div class="form-group">
+                <div class="textarea-wrapper">
+                  <textarea
+                    id="faceDetails"
+                    rows="2"
+                    placeholder="e.g., smiling, with glasses..."
+                  ></textarea>
+                  <button
+                    type="button"
+                    class="clear-button hidden"
+                    aria-label="Clear face details"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div class="reference-image-upload form-group">
+                  <div class="face-inputs-container">
+                    <div class="form-group">
+                      <label for="boyFaceImageFile" class="sub-label"
+                        >Reference Boy Face</label
+                      >
+                      <div class="file-input-wrapper">
+                        <input type="file" id="boyFaceImageFile" accept="image/*" />
+                        <button
+                          type="button"
+                          class="drive-button"
+                          data-target-input="boyFaceImageFile"
+                          aria-label="Select from Google Drive"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path
+                              d="M19.023 5.416l-3.56-3.56A1.5 1.5 0 0 0 14.404 1H9.587a1.5 1.5 0 0 0-1.06.44L4.966 4.999a1.493 1.493 0 0 0-.443.993L4.5 17.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V6.477a1.5 1.5 0 0 0-.477-1.061zM8.52 3.014L10.59 5h-3.1L8.52 3.014zM18 17.5a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5v-11c0-.001 0-.001 0-.002L5.522 6H11v2.5a.5.5 0 0 0 .5.5h4.5v8z"
+                            ></path>
+                            <path
+                              d="M22.5 11h-4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"
+                            ></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div
+                        class="reference-preview-container"
+                        id="boyFaceImageFilePreview"
+                      >
+                        <p class="preview-placeholder">Preview</p>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="girlFaceImageFile" class="sub-label"
+                        >Reference Girl Face</label
+                      >
+                      <div class="file-input-wrapper">
+                        <input
+                          type="file"
+                          id="girlFaceImageFile"
+                          accept="image/*"
+                        />
+                        <button
+                          type="button"
+                          class="drive-button"
+                          data-target-input="girlFaceImageFile"
+                          aria-label="Select from Google Drive"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path
+                              d="M19.023 5.416l-3.56-3.56A1.5 1.5 0 0 0 14.404 1H9.587a1.5 1.5 0 0 0-1.06.44L4.966 4.999a1.493 1.493 0 0 0-.443.993L4.5 17.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V6.477a1.5 1.5 0 0 0-.477-1.061zM8.52 3.014L10.59 5h-3.1L8.52 3.014zM18 17.5a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5v-11c0-.001 0-.001 0-.002L5.522 6H11v2.5a.5.5 0 0 0 .5.5h4.5v8z"
+                            ></path>
+                            <path
+                              d="M22.5 11h-4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"
+                            ></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div
+                        class="reference-preview-container"
+                        id="girlFaceImageFilePreview"
+                      >
+                        <p class="preview-placeholder">Preview</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="reference-image-section">
+              <summary>Dress, Pose & Items (Optional)</summary>
+              <div class="form-group">
+                <div class="textarea-wrapper">
+                  <textarea
+                    id="dressPose"
+                    rows="3"
+                    placeholder="e.g., wearing a red dress, holding a book..."
+                  ></textarea>
+                  <button
+                    type="button"
+                    class="clear-button hidden"
+                    aria-label="Clear dress and pose details"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div class="reference-image-upload form-group">
+                  <label for="dressPoseImageFile" class="sub-label"
+                    >Reference Dress/Pose Image</label
+                  >
+                  <div class="file-input-wrapper">
+                    <input
+                      type="file"
+                      id="dressPoseImageFile"
+                      accept="image/*"
+                    />
+                    <button
+                      type="button"
+                      class="drive-button"
+                      data-target-input="dressPoseImageFile"
+                      aria-label="Select from Google Drive"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M19.023 5.416l-3.56-3.56A1.5 1.5 0 0 0 14.404 1H9.587a1.5 1.5 0 0 0-1.06.44L4.966 4.999a1.493 1.493 0 0 0-.443.993L4.5 17.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V6.477a1.5 1.5 0 0 0-.477-1.061zM8.52 3.014L10.59 5h-3.1L8.52 3.014zM18 17.5a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5v-11c0-.001 0-.001 0-.002L5.522 6H11v2.5a.5.5 0 0 0 .5.5h4.5v8z"
+                        ></path>
+                        <path
+                          d="M22.5 11h-4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <div
+                    class="reference-preview-container"
+                    id="dressPoseImageFilePreview"
+                  >
+                    <p class="preview-placeholder">Preview</p>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="reference-image-section">
+              <summary>Background (Optional)</summary>
+              <div class="form-group">
+                <div class="textarea-wrapper">
+                  <textarea
+                    id="background"
+                    rows="2"
+                    placeholder="e.g., in a library, fantasy landscape..."
+                  ></textarea>
+                  <button
+                    type="button"
+                    class="clear-button hidden"
+                    aria-label="Clear background details"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div class="reference-image-upload form-group">
+                  <label for="backgroundImageFile" class="sub-label"
+                    >Reference Background/Style Image</label
+                  >
+                  <div class="file-input-wrapper">
+                    <input
+                      type="file"
+                      id="backgroundImageFile"
+                      accept="image/*"
+                    />
+                    <button
+                      type="button"
+                      class="drive-button"
+                      data-target-input="backgroundImageFile"
+                      aria-label="Select from Google Drive"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M19.023 5.416l-3.56-3.56A1.5 1.5 0 0 0 14.404 1H9.587a1.5 1.5 0 0 0-1.06.44L4.966 4.999a1.493 1.493 0 0 0-.443.993L4.5 17.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V6.477a1.5 1.5 0 0 0-.477-1.061zM8.52 3.014L10.59 5h-3.1L8.52 3.014zM18 17.5a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5v-11c0-.001 0-.001 0-.002L5.522 6H11v2.5a.5.5 0 0 0 .5.5h4.5v8z"
+                        ></path>
+                        <path
+                          d="M22.5 11h-4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <div
+                    class="reference-preview-container"
+                    id="backgroundImageFilePreview"
+                  >
+                    <p class="preview-placeholder">Preview</p>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <div class="button-group">
+        <button id="generateButton">Generate</button>
+        <button id="clearCanvasButton" class="secondary-button hidden">
+          Clear Canvas
+        </button>
+      </div>
+
+      <!-- WORKSPACE SECTION -->
+      <section id="workspace-wrapper">
+        <div class="section-header">
+          <h2>Workspace</h2>
+        </div>
+        <div id="editor-wrapper">
+          <div id="editor-main-view" class="hidden">
+            <div id="canvas-container">
+              <canvas id="outpaintCanvas"></canvas>
+              <div id="canvas-size-label" class="hidden"></div>
+            </div>
+            <div id="splitter"></div>
+            <div id="layer-panel-container">
+              <div class="layer-panel-header">
+                <h3>Layers</h3>
+              </div>
+              <ul id="layerList">
+                <!-- Layer items will be dynamically inserted here -->
+              </ul>
+              <div class="layer-panel-footer">
+                <button id="addLayerButton" class="secondary-button">
+                  Add Image
+                </button>
+                <div class="layer-actions">
+                  <button
+                    id="duplicateLayerButton"
+                    aria-label="Duplicate Selected Layer"
+                    disabled
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      fill="currentColor"
+                      viewBox="0 0 16 16"
+                    >
+                      <path
+                        d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H2z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    id="deleteLayerButton"
+                    aria-label="Delete Selected Layer"
+                    disabled
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      fill="currentColor"
+                      viewBox="0 0 16 16"
+                    >
+                      <path
+                        d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"
+                      />
+                      <path
+                        fill-rule="evenodd"
+                        d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="image-preview-container hidden" id="imageFilePreview">
+            <p class="preview-placeholder">
+              Upload images for the canvas to begin composition
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULT SECTION -->
+      <section id="result-wrapper">
+        <div id="loading-container" class="hidden">
+          <div class="spinner"></div>
+          <p>The AI is painting your masterpiece...</p>
+        </div>
+
+        <div id="output-wrapper" class="hidden">
+          <div class="section-header">
+            <h2>Result</h2>
+          </div>
+          <!-- Output for text -->
+          <div id="text-output-container" class="hidden">
+            <pre id="output" aria-live="polite"></pre>
+            <div class="output-actions">
+              <button id="textBackToEditorButton" class="secondary-button">
+                Back to Editor
+              </button>
+              <button id="downloadTextButton" class="secondary-button">
+                Download Text
+              </button>
+            </div>
+          </div>
+
+          <!-- Output for images -->
+          <div id="image-output-container" class="hidden">
+            <img id="outputImage" src="" alt="Generated image" />
+            <div class="output-actions">
+              <button id="imageBackToEditorButton" class="secondary-button">
+                Back to Editor
+              </button>
+              <button id="addToCanvasButton" class="secondary-button">
+                Add to Canvas
+              </button>
+              <button id="downloadImageButton" class="secondary-button">
+                Download Image
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
